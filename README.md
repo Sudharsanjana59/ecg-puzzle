@@ -1,82 +1,100 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ECG Pulse Match — Levels</title>
-<link rel="stylesheet" href="css/style.css" />
-</head>
-<body>
+# ECG Pulse Match 🫀
 
-<div class="screen">
-  <div class="topbar">
-    <div class="brand"><span class="dot"></span> ECG PULSE MATCH</div>
-    <div class="hstack">
-      <span class="stat-pill" id="userPill">👤 —</span>
-      <a class="btn btn-ghost" href="leaderboard.html">🏆 Leaderboard</a>
-      <button class="btn btn-ghost" id="logoutBtn">Sign out</button>
-    </div>
-  </div>
+A drag-and-drop ECG rhythm identification puzzle game — sign in, drag the
+correct diagnosis label onto each waveform, and climb the leaderboard.
 
-  <div class="container" style="flex:1; padding-top:26px; padding-bottom:40px;">
-    <h1 style="font-size:26px;" class="gradient-text">Choose a level</h1>
-    <p style="color:var(--ui-dim); margin-top:8px;">Every level is a single rhythm, start to finish. Master it, then unlock the next.</p>
-    <div class="level-grid" id="levelGrid"></div>
-  </div>
+## Run it
+No build step, no server required.
+1. Unzip the folder.
+2. Double-click `index.html` to open it in your browser (or right-click →
+   Open With → your browser). Works on desktop and mobile browsers.
+3. Optional: serve it locally for the most reliable font loading:
+   `npx serve .` or `python3 -m http.server`, then open the printed URL.
 
-  <footer class="foot">Synthetic waveforms for educational / gameplay purposes only — not for clinical diagnosis.</footer>
-</div>
+## How to play
+1. **Sign in** with any name on the login screen (no password — this is a
+   practice game, not a real authentication system).
+   - Sign in with the name **admin** to open the admin dashboard instead.
+2. **Pick a level** (1 → 24, increasing difficulty from Normal Sinus Rhythm
+   all the way to Ventricular Fibrillation). Each level unlocks after you
+   get a perfect score on the one before it.
+3. Each level shows one or more **named ECG strips, each missing its wave**
+   — just a row of empty dashed slots. Below, a **tray of small ECG
+   waveform pieces** — some are the real pieces that belong in that strip,
+   others are decoy pieces borrowed from a different rhythm (same size, so
+   they visually could fit, but the pattern is wrong).
+4. **Drag** pieces from the tray into the empty slots to rebuild each
+   strip, left to right. Tap-and-drag works the same on touch screens. You
+   can drag a placed piece back out or swap it for another at any time.
+5. Once every slot is filled, hit **Submit**. Each slot lights up green
+   (correct piece, correct position) or red (wrong), and any incomplete
+   strip reveals a hint explaining the real rhythm.
+6. Your score is a **potential-score counter that ticks down every
+   second** you're still playing, multiplied by your accuracy when you
+   submit — so working both fast and correctly scores highest. A perfect
+   rebuild unlocks the next level and adds an entry to the **Leaderboard**.
 
-<script src="js/ecg-data.js"></script>
-<script src="js/ecg-svg.js"></script>
-<script src="js/common.js"></script>
-<script>
-  const user = requireLogin();
-  if (user) {
-    document.getElementById("userPill").textContent = "👤 " + user.name;
-    if (user.isAdmin) window.location.href = "admin.html";
+## Project structure
+```
+ecg-puzzle-game/
+├── index.html        Login screen (animated ECG hero)
+├── levels.html        Level select screen
+├── game.html          The puzzle itself (drag & drop, scoring, hints)
+├── leaderboard.html   Public leaderboard
+├── admin.html         Admin dataset + leaderboard export (name = "admin")
+├── css/style.css      Design system, layout, animations
+├── js/ecg-data.js     THE DATASET — rhythm names, hints, level composition
+├── js/ecg-svg.js      Procedurally draws each ECG rhythm as SVG (no images needed)
+├── js/common.js       Session, leaderboard, and small shared helpers
+└── README.md
+```
 
-    document.getElementById("logoutBtn").addEventListener("click", logout);
-    spawnFloatParticles(10);
+## Editing the dataset (for admins)
+Everything about the rhythms and levels lives in `js/ecg-data.js`:
+- `ECG_TYPES` — add/edit a rhythm's display name, difficulty, typical rate,
+  and the hint shown after a wrong guess.
+- `LEVELS` — control which rhythm IDs appear in each level, how many
+  `segments` each strip is cut into (more segments = harder), and the
+  `timeBonusSeconds` window the score countdown decays over.
 
-    const progress = getProgress(user.name);
-    const grid = document.getElementById("levelGrid");
-    const starsFor = (difficulty) => ({ easy: "★", medium: "★★", hard: "★★★" }[difficulty] || "★");
+No image files to replace — waveforms are generated in code
+(`js/ecg-svg.js`) so you can also tweak wave shape/amplitude there.
 
-    LEVELS.forEach((lvl, idx) => {
-      const topicType = ECG_TYPES[lvl.waveforms[0]];
-      const theme = themeForLevel(lvl.level);
-      const locked = lvl.level > progress.unlocked;
-      const done = lvl.level < progress.unlocked;
-      const card = document.createElement("div");
-      card.className = "level-card" + (locked ? " level-locked" : "");
-      card.style.setProperty("--accent", theme.accent);
-      card.style.setProperty("--accent-dim", theme.accent2);
-      card.style.setProperty("--accent-glow", theme.accent + "33");
-      card.style.animationDelay = (idx * 0.06) + "s";
-      card.innerHTML = `
-        <div class="level-card-inner">
-          <div class="badge">${locked ? lvl.level : theme.icon}</div>
-          ${done ? '<div class="done-tag">✓ cleared</div>' : ""}
-          <div class="level-preview">${locked ? '<span style="color:var(--ui-dim); font-size:22px;">🔒</span>' : renderWaveformSVG(lvl.waveforms[0], 300, 90, { traceColor: theme.accent })}</div>
-          <h3><span>${lvl.title}</span></h3>
-          <p>${lvl.description}</p>
-          <div class="hstack" style="justify-content:space-between; align-items:center;">
-            <span class="pill-diff ${topicType.difficulty}">${topicType.difficulty}</span>
-            <div class="stars">${starsFor(topicType.difficulty)}</div>
-          </div>
-          <button class="btn btn-primary" style="width:100%; margin-top:14px;" ${locked ? "disabled" : ""}>${locked ? "🔒 Locked" : "Play level →"}</button>
-        </div>
-      `;
-      if (!locked) {
-        card.querySelector("button").addEventListener("click", () => {
-          window.location.href = `game.html?level=${lvl.level}`;
-        });
-        attachTilt(card, { max: 9 });
-      }
-      grid.appendChild(card);
-    });
-  }
-</script>
-</body>
-</html>
+## Data storage note
+This is a front-end-only project: the leaderboard and level-progress are
+stored in the browser's `localStorage`/`sessionStorage`, per device/browser.
+There is no shared backend, so scores won't sync across devices.
+
+To make it multi-device / persistent, the easiest path is:
+1. Stand up a small API (Node/Express, Firebase, Supabase, etc.) with a
+   `POST /scores` and `GET /scores` endpoint.
+2. In `js/common.js`, replace `addLeaderboardEntry` / `getLeaderboard` with
+   `fetch()` calls to that API.
+3. Add real authentication (e.g. Firebase Auth or a simple JWT login) in
+   place of the name-only sign-in in `index.html`.
+
+## What's new in this update
+- **Expanded from 10 to 24 rhythms/levels**, covering both reference charts:
+  all sinus rhythms, ectopy (PAC, PVC, bigeminy, trigeminy), every AV block
+  (1st, Wenckebach, Mobitz II, complete), supraventricular & ventricular
+  tachyarrhythmias, and the named syndromes (WPW, Brugada, Long QT, Sick
+  Sinus, Torsades de Pointes). Every level is still exactly one topic —
+  confirmed programmatically that no topic repeats across the 24 levels.
+- **Every level now has its own color + icon**, generated by spacing 24
+  hues evenly around the color wheel (`themeForLevel()` in
+  `js/ecg-data.js`) — the level grid, the play screen (buttons, correct/
+  wrong highlighting, piece traces), and the admin tables all pick it up
+  automatically via `applyAccent()` in `js/common.js`. No two levels can
+  ever share a color, even if more levels are added later.
+- **Admin dashboard rebuilt** with tabs (Overview / Dataset / Levels /
+  Submissions), colorful stat cards, an animated bar chart of average
+  score per level (scrolls horizontally across all 24), and a top-3 podium.
+- **More motion**: staggered card entrances, an animated gradient page
+  title, an ambient drifting-particle background, and a growing bar chart.
+
+## Notes on the waveforms
+All ECG traces are synthetic, generated with math (Gaussian/triangle pulses
+for P/QRS/T waves, sine sums for chaotic rhythms) rather than photographed
+or scanned real strips — this keeps the game copyright-clean and lets every
+wave scale crisply to any screen size. They are stylized for gameplay and
+readability, not for clinical diagnosis.

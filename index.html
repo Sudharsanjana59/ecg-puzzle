@@ -1,94 +1,92 @@
-# ECG Pulse Match 🫀
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<title>ECG Pulse Match — Sign In</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
 
-A drag-and-drop ECG rhythm identification puzzle game — sign in, drag the
-correct diagnosis label onto each waveform, and climb the leaderboard.
+<div class="screen">
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> ECG PULSE MATCH</div>
+    <div class="hstack mono" style="font-size:12px;color:var(--ui-dim)">v1.0</div>
+  </div>
 
-## Run it
-No build step, no server required.
-1. Unzip the folder.
-2. Double-click `index.html` to open it in your browser (or right-click →
-   Open With → your browser). Works on desktop and mobile browsers.
-3. Optional: serve it locally for the most reliable font loading:
-   `npx serve .` or `python3 -m http.server`, then open the printed URL.
+  <div class="login-hero">
+    <div class="container" style="max-width:640px;">
 
-## How to play
-1. **Sign in** with any name on the login screen (no password — this is a
-   practice game, not a real authentication system).
-   - Sign in with the name **admin** to open the admin dashboard instead.
-2. **Pick a level** (1 → 3, increasing difficulty). Level 2 unlocks after
-   you get a perfect score on Level 1, and so on.
-3. Each level shows one or more **named ECG strips, each missing its wave**
-   — just a row of empty dashed slots. Below, a **tray of small ECG
-   waveform pieces** — some are the real pieces that belong in that strip,
-   others are decoy pieces borrowed from a different rhythm (same size, so
-   they visually could fit, but the pattern is wrong).
-4. **Drag** pieces from the tray into the empty slots to rebuild each
-   strip, left to right. Tap-and-drag works the same on touch screens. You
-   can drag a placed piece back out or swap it for another at any time.
-5. Once every slot is filled, hit **Submit**. Each slot lights up green
-   (correct piece, correct position) or red (wrong), and any incomplete
-   strip reveals a hint explaining the real rhythm.
-6. Your score is a **potential-score counter that ticks down every
-   second** you're still playing, multiplied by your accuracy when you
-   submit — so working both fast and correctly scores highest. A perfect
-   rebuild unlocks the next level and adds an entry to the **Leaderboard**.
+      <div class="monitor-strip">
+        <div class="screen-inner">
+          <div class="hdr">
+            <span>LEAD II</span>
+            <span class="hr-readout" id="hrReadout">78</span>
+            <span>bpm</span>
+          </div>
+          <div style="height:150px" id="heroWave"></div>
+        </div>
+      </div>
 
-## Project structure
-```
-ecg-puzzle-game/
-├── index.html        Login screen (animated ECG hero)
-├── levels.html        Level select screen
-├── game.html          The puzzle itself (drag & drop, scoring, hints)
-├── leaderboard.html   Public leaderboard
-├── admin.html         Admin dataset + leaderboard export (name = "admin")
-├── css/style.css      Design system, layout, animations
-├── js/ecg-data.js     THE DATASET — rhythm names, hints, level composition
-├── js/ecg-svg.js      Procedurally draws each ECG rhythm as SVG (no images needed)
-├── js/common.js       Session, leaderboard, and small shared helpers
-└── README.md
-```
+      <div class="login-card">
+        <div class="login-title">Welcome back</div>
+        <div class="login-sub">Sign in to read the strip, beat the clock, and climb the leaderboard. Type <b>admin</b> as your name to open the admin dataset view.</div>
 
-## Editing the dataset (for admins)
-Everything about the rhythms and levels lives in `js/ecg-data.js`:
-- `ECG_TYPES` — add/edit a rhythm's display name, difficulty, typical rate,
-  and the hint shown after a wrong guess.
-- `LEVELS` — control which rhythm IDs appear in each level, how many
-  `segments` each strip is cut into (more segments = harder), and the
-  `timeBonusSeconds` window the score countdown decays over.
+        <div class="field">
+          <label for="nameInput">Player name</label>
+          <input id="nameInput" type="text" placeholder="e.g. Dr. Priya" maxlength="24" autocomplete="off" />
+        </div>
+        <div class="login-error" id="loginError"></div>
+        <button class="btn btn-primary" style="width:100%;" id="enterBtn">Start reading ECGs →</button>
+        <div class="login-note">No password needed — this is a practice game, not a medical device.</div>
+      </div>
+    </div>
+  </div>
 
-No image files to replace — waveforms are generated in code
-(`js/ecg-svg.js`) so you can also tweak wave shape/amplitude there.
+  <footer class="foot">Synthetic waveforms for educational / gameplay purposes only — not for clinical diagnosis.</footer>
+</div>
 
-## Data storage note
-This is a front-end-only project: the leaderboard and level-progress are
-stored in the browser's `localStorage`/`sessionStorage`, per device/browser.
-There is no shared backend, so scores won't sync across devices.
+<script src="js/ecg-svg.js"></script>
+<script src="js/common.js"></script>
+<script>
+  // draw an animated normal-sinus strip as the hero signature element
+  const heroEl = document.getElementById("heroWave");
+  const W = 640, H = 150;
+  heroEl.innerHTML = renderWaveformSVG("NSR", W, H, { traceColor: "#39ff88" });
+  const tracePath = heroEl.querySelector(".ecg-trace-path");
+  const len = tracePath.getTotalLength();
+  tracePath.style.strokeDasharray = len;
+  tracePath.style.strokeDashoffset = len;
+  tracePath.animate(
+    [{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
+    { duration: 3200, iterations: Infinity, easing: "linear" }
+  );
 
-To make it multi-device / persistent, the easiest path is:
-1. Stand up a small API (Node/Express, Firebase, Supabase, etc.) with a
-   `POST /scores` and `GET /scores` endpoint.
-2. In `js/common.js`, replace `addLeaderboardEntry` / `getLeaderboard` with
-   `fetch()` calls to that API.
-3. Add real authentication (e.g. Firebase Auth or a simple JWT login) in
-   place of the name-only sign-in in `index.html`.
+  // ambient colorful particles drifting up behind the login card
+  spawnFloatParticles(16);
 
-## What's new in this update
-- **Every level now has its own color + icon** (`LEVEL_THEMES` in
-  `js/ecg-data.js`) — the level grid, the play screen (buttons, correct/
-  wrong highlighting, piece traces), and the admin tables all pick it up
-  automatically via `applyAccent()` in `js/common.js`. No two levels share
-  a color, so it's always visually obvious which level you're in.
-- **Admin dashboard rebuilt** with tabs (Overview / Dataset / Levels /
-  Submissions), colorful stat cards, an animated bar chart of average
-  score per level, and a top-3 podium.
-- **More motion**: staggered card entrances, an animated gradient page
-  title, an ambient drifting-particle background, and a growing bar chart.
-- Confirmed each level maps to exactly one unique rhythm topic — see the
-  Levels tab in the admin dashboard for the full mapping.
+  // gentle heart-rate readout flicker for atmosphere
+  const hr = document.getElementById("hrReadout");
+  setInterval(() => { hr.textContent = 74 + Math.floor(Math.random() * 8); }, 1400);
 
-## Notes on the waveforms
-All ECG traces are synthetic, generated with math (Gaussian/triangle pulses
-for P/QRS/T waves, sine sums for chaotic rhythms) rather than photographed
-or scanned real strips — this keeps the game copyright-clean and lets every
-wave scale crisply to any screen size. They are stylized for gameplay and
-readability, not for clinical diagnosis.
+  // 3D depth: card tilts toward the pointer, monitor housing tilts opposite
+  attachTilt(document.querySelector(".login-card"), { max: 6, lift: 6 });
+  attachTilt(document.querySelector(".monitor-strip"), { max: 4, lift: 4 });
+
+  // if already logged in, skip straight to levels
+  if (getCurrentUser()) window.location.href = "levels.html";
+
+  const input = document.getElementById("nameInput");
+  const err = document.getElementById("loginError");
+  function tryEnter() {
+    const name = input.value.trim();
+    if (!name) { err.textContent = "Please enter a name to continue."; return; }
+    if (name.length < 2) { err.textContent = "Name must be at least 2 characters."; return; }
+    setCurrentUser(name);
+    window.location.href = name.toLowerCase() === "admin" ? "admin.html" : "levels.html";
+  }
+  document.getElementById("enterBtn").addEventListener("click", tryEnter);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") tryEnter(); });
+</script>
+</body>
+</html>
